@@ -27,7 +27,8 @@ from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageOps
 
-VERSION = "0.4.5"
+VERSION = "0.7.1"
+AVISO_DISCO = "Poco espacio | "
 RELEASE_DATE = "2026-11-22"
 
 HOME = Path.home()
@@ -149,6 +150,70 @@ def red_linux() -> str:
     return interfaz
 
 
+def detalles_ram_linux() -> str:
+    """Devuelve tipo y velocidad por módulo instalado si SMBIOS está accesible."""
+    datos = run(["dmidecode", "--type", "17"])
+    if not datos:
+        cache = HOME / ".local/share/aurora-desktop-picture/ram.txt"
+        try:
+            datos = cache.read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            return ""
+    detalles = []
+    for bloque in re.split(r"(?m)^Memory Device\s*$", datos)[1:]:
+        campos = {}
+        for linea in bloque.splitlines():
+            if linea.startswith("Handle "):
+                break
+            clave, separador, valor = linea.strip().partition(":")
+            if separador:
+                campos[clave] = valor.strip()
+        if not re.match(r"^[1-9]\d*\s+(?:kB|MB|GB|TB)$", campos.get("Size", ""), re.I):
+            continue
+
+        tipo = campos.get("Type", "")
+        if not re.fullmatch(r"L?P?DDR\d*", tipo, re.I):
+            tipo = ""
+        velocidad = ""
+        for clave in ("Configured Memory Speed", "Configured Clock Speed", "Speed"):
+            valor = campos.get(clave, "")
+            if re.fullmatch(r"[1-9]\d*\s+(?:MT/s|MHz)", valor, re.I):
+                velocidad = valor
+                break
+        detalle = " ".join(filter(None, (tipo, velocidad)))
+        if detalle and detalle not in detalles:
+            detalles.append(detalle)
+    return " / ".join(detalles)
+
+
+def tipo_disco_linux() -> str:
+    """Clasifica los discos de bloque que respaldan el sistema de archivos raíz."""
+    dispositivo = run(["findmnt", "--noheadings", "--output", "MAJ:MIN", "--target", "/"])
+    if not re.fullmatch(r"\d+:\d+", dispositivo):
+        return ""
+
+    datos = run(["lsblk", "--inverse", "--noheadings", "--raw",
+                 "--output", "TYPE,ROTA,TRAN", f"/dev/block/{dispositivo}"])
+    tipos = []
+    for linea in datos.splitlines():
+        campos = linea.split()
+        if len(campos) < 2 or campos[0] != "disk":
+            continue
+        rotacion = campos[1]
+        transporte = campos[2].lower() if len(campos) > 2 else ""
+        if transporte == "nvme":
+            tipo = "SSD NVMe"
+        elif rotacion == "1":
+            tipo = "HDD"
+        elif rotacion == "0":
+            tipo = "SSD SATA" if transporte in {"sata", "ata"} else "SSD"
+        else:
+            continue
+        if tipo not in tipos:
+            tipos.append(tipo)
+    return " / ".join(tipos)
+
+
 def memoria_windows_gib() -> float:
     import ctypes
     from ctypes import wintypes
@@ -200,6 +265,26 @@ def os_release() -> tuple[str, str]:
     return data.get("PRETTY_NAME", platform.system()), data.get("VERSION_ID", "")
 
 
+def procesador_windows() -> tuple[str, int]:
+    """Lee el modelo comercial y la frecuencia reportada por Windows."""
+    import winreg
+
+    try:
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                            r"HARDWARE\DESCRIPTION\System\CentralProcessor\0") as clave:
+            try:
+                modelo = winreg.QueryValueEx(clave, "ProcessorNameString")[0]
+            except OSError:
+                modelo = ""
+            try:
+                mhz = winreg.QueryValueEx(clave, "~MHz")[0]
+            except OSError:
+                mhz = 0
+    except OSError:
+        return "", 0
+    return modelo if isinstance(modelo, str) else "", mhz if isinstance(mhz, int) else 0
+
+
 def fabricante_modelo() -> tuple[str, str]:
     if sys.platform != "win32":
         return (first_line("/sys/class/dmi/id/sys_vendor"),
@@ -240,6 +325,10 @@ def collect_hardware() -> list[tuple[str, str]]:
         pass
     m = re.search(r"^model name\s*:\s*(.+)$", cpuinfo, re.M)
     cpu = m.group(1).strip() if m else (platform.processor() or "CPU desconocida")
+    mhz_windows = 0
+    if sys.platform == "win32":
+        modelo, mhz_windows = procesador_windows()
+        cpu = modelo or cpu
     hilos = len(re.findall(r"^processor\s*:", cpuinfo, re.M)) or os.cpu_count() or 1
     m = re.search(r"^cpu cores\s*:\s*(\d+)", cpuinfo, re.M)
     nucleos = int(m.group(1)) if m else max(1, hilos // 2)
@@ -259,6 +348,8 @@ def collect_hardware() -> list[tuple[str, str]]:
     if not base_ghz and m_base:
         base_ghz = f"{float(m_base.group(1).replace(',', '.')) / 1000:.2f}".rstrip("0").rstrip(".")
     base = f"a {base_ghz} GHz" if base_ghz else ""
+    if not base and mhz_windows > 0:
+        base = f"(~{mhz_windows / 1000:.2f} GHz)"
 
     m_max = re.search(r"CPU (?:max|m[aá]x)[^:]*:\s*([\d.,]+)", lscpu, re.I)
     max_ghz = f"{float(m_max.group(1).replace(',', '.')) / 1000:.1f}".rstrip("0").rstrip(".") if m_max else ""
@@ -286,12 +377,26 @@ def collect_hardware() -> list[tuple[str, str]]:
     else:
         net = red_linux()
 
+    memoria = f"{mem_total_gib:.1f} GiB" if mem_total_gib else "No detectada"
+    if sys.platform.startswith("linux"):
+        detalles_ram = detalles_ram_linux()
+        if detalles_ram:
+            memoria = f"{memoria} | {detalles_ram}" if mem_total_gib else detalles_ram
+
     uso = shutil.disk_usage("/")
     gb = 1024 ** 3  # mostramos GiB con la etiqueta "GB", igual que df -h
     disco = (
         f"Disco de {uso.total / gb:.0f} GB "
         f"({uso.used / gb:.0f} GB usados, {uso.free / gb:.0f} GB libres) montado en /"
     )
+
+    if sys.platform.startswith("linux"):
+        tipo_disco = tipo_disco_linux()
+        if tipo_disco:
+            disco = f"{tipo_disco} | {disco}"
+
+    if uso.total > 0 and uso.free * 10 < uso.total:
+        disco = AVISO_DISCO + disco
 
     pretty, version = os_release()
     so = f"{pretty} ({platform.machine()})"
@@ -301,7 +406,7 @@ def collect_hardware() -> list[tuple[str, str]]:
         ("Nombre del equipo", socket.gethostname()),
         ("Procesador", f"{cpu} {base} {maximo}".strip()),
         ("", f"{nucleos} núcleos / {hilos} hilos  -  {sockets} socket(s)"),
-        ("Memoria RAM", f"{mem_total_gib:.1f} GiB" if mem_total_gib else "No detectada"),
+        ("Memoria RAM", memoria),
         ("Gráficos", gpu),
         ("Almacenamiento", disco),
         ("Red", net),
@@ -538,9 +643,11 @@ def render(
     label_w = layout["label_w"]
     y = layout["rows_y"]
     for label, value in rows:
+        advertencia = label == "Almacenamiento" and value.startswith(AVISO_DISCO)
+        amarillo = (255, 214, 77, 255)
         if label:
             draw_fit(d, (x, y), label.upper(), F_MONO_B, layout["body_size"],
-                     (0, 215, 195, 255), label_w - 6, bold=True)
+                     amarillo if advertencia else (0, 215, 195, 255), label_w - 6, bold=True)
         value_right = right
         if label == "Actualizado":
             version_text = f"v{VERSION}"
@@ -551,7 +658,7 @@ def render(
                    version_text, font=version_font, fill=(155, 173, 201, 255))
             value_right = version_x - 8
         draw_fit(d, (x + label_w, y), value, F_MONO, layout["body_size"],
-                 (226, 235, 250, 255), value_right - (x + label_w))
+                 amarillo if advertencia else (226, 235, 250, 255), value_right - (x + label_w))
         y += layout["row_h"]
 
     output.parent.mkdir(parents=True, exist_ok=True)

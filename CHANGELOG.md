@@ -4,6 +4,31 @@ Todos los cambios relevantes de este proyecto se documentan en este archivo.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto usa versiones `MAJOR.MINOR.PATCH` aún no publicadas como etiquetas.
 
+## [0.7.1] - 2026-11-22
+
+### Fixed
+
+- Linux puede reutilizar una captura de tipo y velocidad de RAM cuando la sesión gráfica no tiene acceso a SMBIOS.
+
+## [0.7.0] - 2026-11-22
+
+### Added
+
+- Windows muestra el modelo comercial del procesador y la frecuencia disponible.
+- La fila Almacenamiento se resalta en amarillo cuando queda menos del 10 % de espacio libre.
+
+## [0.6.0] - 2026-11-22
+
+### Added
+
+- Linux muestra el tipo de disco que respalda el sistema de archivos raíz.
+
+## [0.5.0] - 2026-11-22
+
+### Added
+
+- En Linux, la tarjeta muestra el tipo de RAM y su velocidad si los datos SMBIOS están disponibles.
+
 ## [0.4.5] - 2026-11-22
 
 ### Fixed

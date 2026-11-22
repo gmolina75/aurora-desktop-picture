@@ -22,6 +22,18 @@ Los datos se muestran en un panel compacto y semitransparente en el cuarto infer
 
 En Linux, la fila **Red** muestra la interfaz que el sistema elige para salir a la red.
 
+En Linux, **Memoria RAM** añade el tipo y la velocidad cuando los datos SMBIOS están disponibles. Si `dmidecode` requiere permisos de administrador, captura estos datos una vez desde tu sesión de usuario:
+
+```bash
+mkdir -p "$HOME/.local/share/aurora-desktop-picture"
+datos=$(sudo dmidecode --type 17) && printf '%s\n' "$datos" | grep -E '^Memory Device$|^[[:space:]]+(Size|Type|Speed|Configured Memory Speed|Configured Clock Speed):' > "$HOME/.local/share/aurora-desktop-picture/ram.txt"
+bash actualizar.sh
+```
+
+En Ubuntu o Mint, si falta el comando, instálalo con `sudo apt install dmidecode`. Repite la captura si cambias la RAM. El archivo guarda los campos de capacidad, tipo y velocidad. Las actualizaciones del fondo se ejecutan con tu usuario habitual.
+
+En Linux, **Almacenamiento** indica HDD, SSD, SSD SATA o SSD NVMe cuando el sistema permite identificar el dispositivo que respalda la raíz `/`. Si no se identifica, se conservan las cifras de espacio.
+
 ## Requisitos
 
 - Linux con Cinnamon (Linux Mint) o GNOME (probado en Ubuntu 26.04, sesión Wayland con XWayland).
