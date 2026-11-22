@@ -27,7 +27,7 @@ from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageOps
 
-VERSION = "0.4.4"
+VERSION = "0.4.5"
 RELEASE_DATE = "2026-11-22"
 
 HOME = Path.home()
@@ -129,6 +129,24 @@ def local_ips() -> str:
         except OSError:
             ips.append("127.0.0.1")
     return "  |  ".join(ips)
+
+
+def red_linux() -> str:
+    """Identifica la interfaz de salida elegida por el sistema."""
+    ruta = run(["ip", "-4", "route", "get", "8.8.8.8"])
+    if not ruta:
+        ruta = run(["ip", "-6", "route", "get", "2001:4860:4860::8888"])
+    coincidencia = re.search(r"\bdev\s+([^\s/]+)", ruta)
+    if not coincidencia or coincidencia.group(1) == "lo":
+        return "Sin ruta de salida detectada"
+
+    interfaz = coincidencia.group(1)
+    dispositivo = Path("/sys/class/net") / interfaz
+    if (dispositivo / "wireless").exists() or (dispositivo / "phy80211").exists():
+        return f"Wi-Fi ({interfaz})"
+    if (dispositivo / "device").exists() and first_line(str(dispositivo / "type")) == "1":
+        return f"Cableada ({interfaz})"
+    return interfaz
 
 
 def memoria_windows_gib() -> float:
@@ -257,20 +275,16 @@ def collect_hardware() -> list[tuple[str, str]]:
 
     lspci = run(["lspci"])
     gpu = "No detectada"
-    net = "No detectada"
     for line in lspci.splitlines():
         desc = line.split(": ", 1)[-1] if ": " in line else line
         if re.search(r"VGA|3D controller|Display controller", line, re.I) and gpu == "No detectada":
             gpu = clean_pci(desc, keep_vendor=True)
-        if "Network controller" in line and net == "No detectada":
-            net = clean_pci(desc)
-            if re.search(r"802\.11|wireless|wi-?fi", net, re.I):
-                net += " (Wi-Fi)"
-
     direcciones = local_ips()
     if sys.platform == "win32":
         mem_total_gib = memoria_windows_gib()
         net = red_windows(direcciones)
+    else:
+        net = red_linux()
 
     uso = shutil.disk_usage("/")
     gb = 1024 ** 3  # mostramos GiB con la etiqueta "GB", igual que df -h

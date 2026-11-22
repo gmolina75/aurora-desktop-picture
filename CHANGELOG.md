@@ -4,6 +4,12 @@ Todos los cambios relevantes de este proyecto se documentan en este archivo.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto usa versiones `MAJOR.MINOR.PATCH` aún no publicadas como etiquetas.
 
+## [0.4.5] - 2026-11-22
+
+### Fixed
+
+- En Linux, la fila Red muestra la interfaz de salida en lugar del modelo de un adaptador Wi-Fi que puede estar apagado.
+
 ## [0.4.4] - 2026-11-22
 
 ### Fixed

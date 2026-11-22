@@ -20,6 +20,8 @@ Los datos se muestran en un panel compacto y semitransparente en el cuarto infer
 
 > **Privacidad:** el fondo muestra el hostname y la IP local, y el registro guarda las rutas y errores. No compartas el PNG ni el log sin revisarlos antes.
 
+En Linux, la fila **Red** muestra la interfaz que el sistema elige para salir a la red.
+
 ## Requisitos
 
 - Linux con Cinnamon (Linux Mint) o GNOME (probado en Ubuntu 26.04, sesión Wayland con XWayland).
