@@ -38,11 +38,10 @@ Con Git y Python 3.10 o superior instalados, abre PowerShell en tu sesión de es
 ```powershell
 git clone --branch master https://github.com/gmolina75/aurora-desktop-picture.git
 cd aurora-desktop-picture
-py -3 -m pip install -r requirements.txt
-.\actualizar.bat
+.\instalar.bat
 ```
 
-Si `py` no está disponible, usa `python -m pip install -r requirements.txt`. Si Windows devuelve «Acceso denegado» al aplicar el fondo, vuelve a ejecutar `.\actualizar.bat` desde PowerShell abierto como administrador y ubicado en la carpeta del repositorio.
+El instalador usa `py -3` si está disponible o `python` en su lugar. Instala Pillow y aplica el fondo. Si ambos comandos faltan, instala [Python para Windows](https://www.python.org/downloads/windows/) y abre una nueva consola. Si Windows devuelve «Acceso denegado» al aplicar el fondo, ejecuta `.\actualizar.bat` desde PowerShell como administrador.
 
 ### Ubuntu o Debian con GNOME
 
