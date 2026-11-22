@@ -61,6 +61,48 @@ bash install.sh
 
 Gracias a él, GNOME ejecuta el script **automáticamente al iniciar sesión**. Para que el cambio surta efecto, cierra sesión y vuelve a entrar una vez.
 
+## Actualizar desde GitHub
+
+En Windows, desde la carpeta del proyecto:
+
+```powershell
+.\actualizar-github.bat
+```
+
+El BAT actualiza el clon en la rama `master` si se instaló con Git. Si se instaló con PowerShell, descarga la versión nueva en `%LOCALAPPDATA%\AuroraDesktopPicture\proyecto`.
+
+En Linux, desde el clon y dentro de tu sesión de escritorio:
+
+```bash
+bash actualizar-github.sh
+```
+
+Ambos actualizadores regeneran el fondo y conservan `.env`. Los scripts `actualizar.bat` y `actualizar.sh` siguen sirviendo para regenerar el fondo con la versión instalada.
+
+## Usar una imagen propia como fondo
+
+Copia `.env.example` como `.env` junto a `generate_wallpaper.py` y guarda allí tu imagen predeterminada:
+
+```dotenv
+AURORA_FONDO="C:\Fotos\mi-fondo.jpg"
+```
+
+Las rutas relativas se resuelven desde la carpeta del script. Si el valor está vacío o la imagen no existe, el fondo será negro. Usa `--fondo` para elegir otra imagen en una ejecución puntual.
+
+En Windows, desde la carpeta del proyecto:
+
+```powershell
+.\actualizar.bat --fondo "C:\Fotos\mi-fondo.jpg"
+```
+
+En Linux con GNOME:
+
+```bash
+python3 generate_wallpaper.py --fondo "$HOME/Pictures/mi-fondo.jpg"
+```
+
+Aurora adapta la foto al tamaño del escritorio con un recorte centrado y dibuja la tarjeta encima. La foto original se conserva. Usa `--no-set` para generar una vista previa sin aplicar el fondo.
+
 ## Estructura
 
 ```
@@ -92,6 +134,7 @@ Opciones disponibles:
 
 | Opción | Descripción |
 | --- | --- |
+| `--fondo RUTA` | Imagen base para dibujar la tarjeta. |
 | `--output RUTA` | Ruta del PNG generado (por defecto `~/Pictures/hardware_wallpaper.png`). |
 | `--no-set` | No modifica `gsettings`; útil para probar sin tocar el fondo actual. |
 | `--log RUTA` | Añade los mensajes a un archivo de registro. |

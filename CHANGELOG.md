@@ -4,6 +4,34 @@ Todos los cambios relevantes de este proyecto se documentan en este archivo.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto usa versiones `MAJOR.MINOR.PATCH` aún no publicadas como etiquetas.
 
+## [0.4.2] - 2026-11-22
+
+### Added
+
+- Actualizadores para Windows y Linux que descargan la versión de GitHub y regeneran el fondo.
+
+## [0.4.1] - 2026-11-22
+
+### Changed
+
+- Se reducen un 20 % el ancho y el alto de la tarjeta, conservando su anclaje inferior derecho.
+
+## [0.4.0] - 2026-11-22
+
+### Added
+
+- Configuración de la imagen predeterminada mediante `AURORA_FONDO` en `.env`.
+
+### Changed
+
+- Aurora usa un fondo negro cuando no hay una imagen disponible.
+
+## [0.3.0] - 2026-11-22
+
+### Added
+
+- Opción `--fondo` para dibujar la tarjeta sobre una imagen elegida por el usuario.
+
 ## [0.2.15] - 2026-11-22
 
 ### Added

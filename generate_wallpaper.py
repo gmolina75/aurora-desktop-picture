@@ -25,9 +25,9 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from PIL import Image, ImageChops, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageOps
 
-VERSION = "0.2.15"
+VERSION = "0.4.2"
 RELEASE_DATE = "2026-11-22"
 
 HOME = Path.home()
@@ -377,14 +377,17 @@ def compute_layout(width: int, height: int, row_count: int) -> dict[str, int | t
     bottom = height - margin
     panel_width = (right_edge - width // 2) * 5 // 6
     right_edge -= 40
-    left = right_edge - panel_width
+    left = right_edge - panel_width * 4 // 5
     pad = max(10, margin * 3 // 4)
     alto_maximo = (bottom - height // 2) * 3 // 4
-    row_h = min(31, (alto_maximo - 2 * pad) // row_count)
+    alto_fila_original = min(31, (alto_maximo - 2 * pad) // row_count)
+    alto_panel = (alto_fila_original * row_count + 2 * pad) * 4 // 5
+    pad = pad * 4 // 5
+    row_h = (alto_panel - 2 * pad) // row_count
     if row_h < 6:
         raise ValueError("demasiadas filas para el panel")
     bottom -= 20
-    top = bottom - row_h * row_count - 2 * pad
+    top = bottom - alto_panel
     x = left + pad
     right = right_edge - max(20, (right_edge - left) * 8 // 100)
 
@@ -469,18 +472,48 @@ def draw_fit(
     draw.text(xy, truncate_text(draw, text, font, max_width), font=font, fill=fill)
 
 
-def render(rows: list[tuple[str, str]], output: Path, wait_seconds: float = 0.0) -> None:
+def fondo_configurado() -> Path | None:
+    """Lee AURORA_FONDO del archivo .env ubicado junto al script."""
+    archivo = Path(__file__).resolve().with_name(".env")
+    try:
+        lineas = archivo.read_text(encoding="utf-8-sig").splitlines()
+    except FileNotFoundError:
+        return None
+
+    for linea in lineas:
+        clave, _, valor = linea.partition("=")
+        if clave.strip() != "AURORA_FONDO":
+            continue
+        valor = valor.strip()
+        if len(valor) >= 2 and valor[0] in ('"', "'") and valor[0] == valor[-1]:
+            valor = valor[1:-1]
+        if valor:
+            ruta = Path(os.path.expandvars(valor)).expanduser()
+            return archivo.parent / ruta
+        return None
+    return None
+
+
+def render(
+    rows: list[tuple[str, str]], output: Path, wait_seconds: float = 0.0,
+    *, fondo: Path | None = None,
+) -> None:
     width, height = detect_screen_size(wait_seconds)
     layout = compute_layout(width, height, len(rows))
     panel: tuple[int, int, int, int] = layout["panel"]  # type: ignore[assignment]
 
-    c0, c1 = (13, 20, 38), (28, 45, 78)
-    img = make_gradient(width, height, c0, c1)
+    if fondo is not None and not fondo.is_file():
+        log(f"Aviso: no se encuentra la imagen de fondo {fondo}; se usará negro.")
+        fondo = None
+
+    if fondo is None:
+        img = Image.new("RGB", (width, height), "black")
+    else:
+        if fondo.resolve() == output.resolve() or (output.exists() and fondo.samefile(output)):
+            raise ValueError("La imagen de fondo y el PNG de salida deben ser archivos distintos.")
+        with Image.open(fondo) as original:
+            img = ImageOps.fit(ImageOps.exif_transpose(original).convert("RGB"), (width, height))
     d = ImageDraw.Draw(img, "RGBA")
-    d.ellipse([int(width * 0.70), -int(height * 0.24),
-               int(width * 1.22), int(height * 0.52)], fill=(56, 132, 255, 22))
-    d.ellipse([-int(width * 0.16), int(height * 0.28),
-               int(width * 0.36), int(height * 1.19)], fill=(0, 220, 190, 16))
 
     radius = min(18, layout["row_h"])
     d.rounded_rectangle(panel, radius=radius, fill=(8, 14, 28, 110),
@@ -553,6 +586,7 @@ def main() -> int:
                     version=f"Aurora Desktop Picture {VERSION} ({RELEASE_DATE})",
                     help="mostrar la versión y la fecha de publicación")
     ap.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="ruta del PNG")
+    ap.add_argument("--fondo", type=Path, help="imagen sobre la que se dibuja la tarjeta")
     ap.add_argument("--no-set", action="store_true", help="generar el PNG sin cambiar el fondo del escritorio")
     ap.add_argument("--log", type=Path, help="archivo de registro")
     ap.add_argument("--print", action="store_true", help="mostrar los datos y salir")
@@ -567,7 +601,7 @@ def main() -> int:
             for label, value in rows:
                 print(f"{label or '  '}: {value}")
             return 0
-        render(rows, args.output, args.wait_display)
+        render(rows, args.output, args.wait_display, fondo=args.fondo if args.fondo is not None else fondo_configurado())
         if not args.no_set:
             set_background(args.output)
         return 0
