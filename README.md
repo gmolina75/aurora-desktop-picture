@@ -2,7 +2,7 @@
 
 Fondo de pantalla que muestra las **especificaciones reales del equipo**, leídas directamente del sistema cada vez que inicias sesión.
 
-Pensado para equipos Ubuntu/GNOME: genera una imagen PNG con la resolución de la pantalla y la aplica como fondo en los temas claro y oscuro.
+Genera una imagen PNG con los datos del equipo y la aplica como fondo en Windows, GNOME o Cinnamon.
 
 ## Versión
 
@@ -13,7 +13,7 @@ La tarjeta muestra la versión del script en letra pequeña junto a «Actualizad
 1. Recoge los datos del hardware (`/proc`, `/sys`, `lspci`, `lscpu`, `/etc/os-release`), incluidos el **nombre del equipo** (hostname) y su **dirección IP** local.
 2. Dibuja una imagen PNG con la resolución real de la pantalla, usando Pillow.
 3. Guarda `hardware_wallpaper.png` en la carpeta Documentos del usuario en Windows y en `~/Pictures` en Linux. Usa `--output` para elegir otra ruta.
-4. La aplica como fondo de GNOME (tema claro y oscuro, modo `zoom`).
+4. Aplica la imagen como fondo en Windows, GNOME o Cinnamon.
 5. Escribe un registro en `~/.local/share/aurora-desktop-picture/last-run.log`.
 
 Los datos se muestran en un panel compacto y semitransparente en el cuarto inferior derecho, sin título, para dejar libre el resto del escritorio. La imagen incluye una línea **«Actualizado: fecha y hora»** para que puedas comprobar que se refresca sola.
@@ -22,7 +22,7 @@ Los datos se muestran en un panel compacto y semitransparente en el cuarto infer
 
 ## Requisitos
 
-- Linux con GNOME (probado en Ubuntu 26.04, sesión Wayland con XWayland).
+- Linux con Cinnamon (Linux Mint) o GNOME (probado en Ubuntu 26.04, sesión Wayland con XWayland).
 - Python 3.10 o superior.
 - Pillow 9 o superior.
 - Herramientas opcionales que mejoran los datos mostrados: `lspci` (paquete `pciutils`) y `lscpu` (paquete `util-linux`). Si faltan, el script degrada aisladamente esas filas.
@@ -43,7 +43,7 @@ powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File $instalador
 
 El instalador descarga el proyecto desde GitHub, reutiliza Python compatible si está disponible o lo instala desde python.org, instala Pillow y aplica el fondo. Los archivos quedan en `%LOCALAPPDATA%\AuroraDesktopPicture\proyecto`. Ejecuta el mismo bloque para actualizar la instalación. Para generar la imagen sin cambiar el fondo, añade `-NoAplicar` a la última línea.
 
-### Ubuntu o Debian con GNOME
+### Ubuntu o Debian con GNOME y Linux Mint con Cinnamon
 
 ```bash
 sudo apt update
@@ -59,7 +59,7 @@ bash install.sh
 ~/.config/autostart/aurora-desktop-picture.desktop
 ```
 
-Gracias a él, GNOME ejecuta el script **automáticamente al iniciar sesión**. Para que el cambio surta efecto, cierra sesión y vuelve a entrar una vez.
+Gracias a él, el escritorio ejecuta el script **automáticamente al iniciar sesión**. Para que el cambio surta efecto, cierra sesión y vuelve a entrar una vez.
 
 ## Actualizar desde GitHub
 
@@ -95,7 +95,7 @@ En Windows, desde la carpeta del proyecto:
 .\actualizar.bat --fondo "C:\Fotos\mi-fondo.jpg"
 ```
 
-En Linux con GNOME:
+En Linux con GNOME o Cinnamon:
 
 ```bash
 python3 generate_wallpaper.py --fondo "$HOME/Pictures/mi-fondo.jpg"
@@ -162,6 +162,12 @@ gsettings get org.gnome.desktop.background picture-options
 
 La fecha de la última línea del registro debería coincidir con el último inicio de sesión, y la URI debería apuntar a `~/Pictures/hardware_wallpaper.png` con `picture-options` en `'zoom'`.
 
+En Linux Mint con Cinnamon, consulta el fondo activo con:
+
+```bash
+gsettings get org.cinnamon.desktop.background picture-uri
+```
+
 ## Desinstalar
 
 ```bash
@@ -193,7 +199,7 @@ Tras cualquier cambio, comprueba primero con `python3 -m unittest discover -s te
 | --- | --- | --- |
 | El fondo no se actualiza al iniciar sesión | El arranque automático se lanzó antes de que la pantalla estuviera disponible. | El instalador ya pasa `--wait-display 20`. Revisa el registro; ejecuta `./actualizar.sh` una vez iniciada la sesión. |
 | `Aviso: no se pudo detectar una resolución válida` | Ninguna herramienta de resolución respondió; se usa 1920x1080. | Instala `x11-utils`. Si el fondo no se ve bien, indica tu resolución al reportar el caso. |
-| `Aviso: no se pudo aplicar picture-uri` | `gsettings` sin acceso a la sesión gráfica (por ejemplo, desde SSH o cron). | Ejecuta el script dentro de la sesión de usuario. |
+| `No se pudo aplicar … picture-uri` | `gsettings` sin acceso a la sesión gráfica (por ejemplo, desde SSH o cron). | Ejecuta el script dentro de la sesión de usuario. |
 | Aparece un aviso de `systemd-xdg-autostart-generator` | El `.desktop` quedó ejecutable de una instalación anterior. | Vuelve a ejecutar `./install.sh`: ahora se instala con permisos `644`. |
 | El texto se ve muy pequeño | La fuente se escala automáticamente para que quepan las 12 filas en pantallas bajas. | Ajusta los multiplicadores en `compute_layout()` si prefieres otro equilibrio. |
 

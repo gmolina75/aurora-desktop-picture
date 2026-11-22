@@ -2,7 +2,7 @@
 """
 Aurora Desktop Picture
 Genera un fondo de pantalla con los datos REALES del hardware y lo aplica
-en GNOME. Pensado para ejecutarse automáticamente al iniciar sesión.
+en Windows, GNOME o Cinnamon. Pensado para ejecutarse automáticamente al iniciar sesión.
 
 Uso:
     python3 generate_wallpaper.py
@@ -27,7 +27,7 @@ from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageOps
 
-VERSION = "0.4.3"
+VERSION = "0.4.4"
 RELEASE_DATE = "2026-11-22"
 
 HOME = Path.home()
@@ -563,19 +563,26 @@ def set_background(path: Path) -> None:
     if not shutil.which("gsettings"):
         log("Aviso: gsettings no está disponible; no se aplicó el fondo")
         return
+    escritorios = os.environ.get("XDG_CURRENT_DESKTOP", "").casefold().split(":")
+    es_cinnamon = any(nombre.strip() in {"cinnamon", "x-cinnamon"} for nombre in escritorios)
+    esquema = "org.cinnamon.desktop.background" if es_cinnamon else "org.gnome.desktop.background"
+    claves = set(run(["gsettings", "list-keys", esquema]).splitlines())
+    if "picture-uri" not in claves:
+        raise OSError(f"No se encontró la configuración de fondo para {esquema}.")
+
     uri = path.resolve().as_uri()
-    for key in ("picture-uri", "picture-uri-dark"):
-        result = subprocess.run(
-            ["gsettings", "set", "org.gnome.desktop.background", key, uri],
-            capture_output=True, text=True,
+    ajustes = [("picture-uri", uri)]
+    if not es_cinnamon and "picture-uri-dark" in claves:
+        ajustes.append(("picture-uri-dark", uri))
+    if "picture-options" in claves:
+        ajustes.append(("picture-options", "zoom"))
+    for clave, valor in ajustes:
+        resultado = subprocess.run(
+            ["gsettings", "set", esquema, clave, valor],
+            capture_output=True, text=True, timeout=8,
         )
-        if result.returncode != 0:
-            log(f"Aviso: no se pudo aplicar {key}: {result.stderr.strip()}")
-            return
-    subprocess.run(
-        ["gsettings", "set", "org.gnome.desktop.background", "picture-options", "zoom"],
-        capture_output=True, text=True,
-    )
+        if resultado.returncode != 0:
+            raise OSError(f"No se pudo aplicar {esquema} {clave}: {resultado.stderr.strip()}")
     log(f"Fondo aplicado: {uri}")
 
 
