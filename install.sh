@@ -21,11 +21,11 @@ cat > "$AUTOSTART_FILE" <<EOF
 Type=Application
 Name=Aurora Desktop Picture
 Comment=Actualiza el fondo de pantalla con los datos del hardware
-Exec=/usr/bin/env python3 "$DIR/generate_wallpaper.py" --log "$HOME/.local/share/aurora-desktop-picture/last-run.log"
+Exec=/usr/bin/env python3 "$DIR/generate_wallpaper.py" --wait-display 20 --log "$HOME/.local/share/aurora-desktop-picture/last-run.log"
 X-GNOME-Autostart-enabled=true
 NoDisplay=true
 EOF
-chmod +x "$AUTOSTART_FILE"
+chmod 644 "$AUTOSTART_FILE"
 
 echo "==> Generando el fondo con los datos actuales..."
 python3 "$DIR/generate_wallpaper.py" --log "$HOME/.local/share/aurora-desktop-picture/last-run.log"

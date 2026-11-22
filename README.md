@@ -22,7 +22,7 @@ La imagen incluye una línea **«Actualizado: fecha y hora»** para que puedas c
 - Python 3.10 o superior.
 - Pillow 9 o superior.
 - Herramientas opcionales que mejoran los datos mostrados: `lspci` (paquete `pciutils`) y `lscpu` (paquete `util-linux`). Si faltan, el script degrada aisladamente esas filas.
-- `xdpyinfo` (paquete `x11-utils`) para detectar la resolución; si no está disponible se usa una resolución de reserva de 3072x1728.
+- `xdpyinfo` (paquete `x11-utils`), `xrandr` o `wlr-randr` para detectar la resolución. Si ninguno devuelve un valor válido se usa la resolución segura de reserva 1920x1080.
 - `gsettings` para aplicar el fondo.
 
 ## Instalación
@@ -60,6 +60,7 @@ aurora-desktop-picture/
 ├── actualizar.sh           # refresco manual
 ├── desinstalar.sh          # quita el arranque automático
 ├── requirements.txt        # dependencia Python (Pillow)
+├── tests/                  # pruebas unitarias (unittest)
 ├── AGENTS.md               # instrucciones para agentes de IA que trabajen aquí
 ├── CHANGELOG.md            # historial de cambios
 ├── README.md               # esta documentación
@@ -69,11 +70,12 @@ aurora-desktop-picture/
 ## Uso manual
 
 ```bash
-./actualizar.sh                                  # regenera y aplica el fondo
-python3 generate_wallpaper.py --print             # solo muestra los datos detectados
+./actualizar.sh                                   # regenera y aplica el fondo
+python3 generate_wallpaper.py --print             # solo muestra los datos detectados y termina
 python3 generate_wallpaper.py --no-set            # crea la imagen sin cambiar el fondo
 python3 generate_wallpaper.py --output /tmp/prueba.png
 python3 generate_wallpaper.py --log /tmp/prueba.log
+python3 generate_wallpaper.py --wait-display 20   # espera a que X11 esté listo (lo usa install.sh)
 ```
 
 Opciones disponibles:
@@ -83,9 +85,18 @@ Opciones disponibles:
 | `--output RUTA` | Ruta del PNG generado (por defecto `~/Pictures/hardware_wallpaper.png`). |
 | `--no-set` | No modifica `gsettings`; útil para probar sin tocar el fondo actual. |
 | `--log RUTA` | Añade los mensajes a un archivo de registro. |
-| `--print` | Imprime las filas de datos detectados por stdout. |
+| `--print` | Imprime las filas de datos detectados por stdout y termina sin generar imagen ni tocar el fondo. |
+| `--wait-display SEGUNDOS` | Reintenta la detección de resolución durante ese tiempo; útil en el arranque, antes de que X11 esté disponible. |
 
 El programa devuelve `0` si todo salió bien y `1` si hubo un error; el error también se escribe en el registro si se indicó `--log`.
+
+## Pruebas
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+Comprueban el parsing de resoluciones, el fallback, que el panel y las fuentes caben en varias resoluciones y el recorte de texto. No modifican el fondo ni escriben en `~/Pictures`.
 
 ## Comprobar que funciona
 
@@ -121,24 +132,23 @@ Edita `generate_wallpaper.py`:
 - Fuentes: variables `F_MONO`, `F_MONO_B`, `F_SANS_B`.
 - Texto/cabecera: cadenas dentro de `render()` y `collect_hardware()`.
 
-Tras cualquier cambio, comprueba primero con `python3 generate_wallpaper.py --print --no-set --output /tmp/prueba.png`.
+Tras cualquier cambio, comprueba primero con `python3 -m unittest discover -s tests -v` y después con `python3 generate_wallpaper.py --no-set --output /tmp/prueba.png`.
 
 ## Solución de problemas
 
 | Síntoma | Causa probable | Acción |
 | --- | --- | --- |
-| El fondo no se actualiza al iniciar sesión | El arranque automático se lanzó antes de que X11 estuviera listo y `xdpyinfo` devolvió dimensiones inválidas. | Revisa el registro; ejecuta `./actualizar.sh` una vez iniciada la sesión. |
-| `ERROR: ValueError: x1 must be greater than or equal to x0` | Resolución detectada demasiado pequeña o inválida en el arranque. | Igual que arriba; el bug está documentado en `CHANGELOG.md`. |
-| `ERROR: ValueError: y1 must be greater than or equal to y0` | Altura insuficiente para el panel. | Igual que arriba. |
+| El fondo no se actualiza al iniciar sesión | El arranque automático se lanzó antes de que la pantalla estuviera disponible. | El instalador ya pasa `--wait-display 20`. Revisa el registro; ejecuta `./actualizar.sh` una vez iniciada la sesión. |
+| `Aviso: no se pudo detectar una resolución válida` | Ninguna herramienta de resolución respondió; se usa 1920x1080. | Instala `x11-utils`. Si el fondo no se ve bien, indica tu resolución al reportar el caso. |
 | `Aviso: no se pudo aplicar picture-uri` | `gsettings` sin acceso a la sesión gráfica (por ejemplo, desde SSH o cron). | Ejecuta el script dentro de la sesión de usuario. |
-| La imagen se ve con texto cortado | La resolución es menor que el espacio necesario para las 12 filas. | Ver limitaciones conocidas. |
+| Aparece un aviso de `systemd-xdg-autostart-generator` | El `.desktop` quedó ejecutable de una instalación anterior. | Vuelve a ejecutar `./install.sh`: ahora se instala con permisos `644`. |
+| El texto se ve muy pequeño | La fuente se escala automáticamente para que quepan las 12 filas en pantallas bajas. | Ajusta los multiplicadores en `compute_layout()` si prefieres otro equilibrio. |
 
 ## Limitaciones conocidas
 
-- En pantallas de 1080p el contenido diseñado necesita ~1468 px de alto: las últimas filas quedan fuera del panel/pantalla y el pie puede solaparlas. La resolución de reserva (3072x1728) sí cabe, por lo que el fallo no aparece en pruebas sin pantalla.
-- La detección de resolución depende de XWayland; en el arranque puede devolver valores transitorios inválidos.
-- El panel `.desktop` se instala con permiso de ejecución, lo que produce un aviso no fatal de `systemd-xdg-autostart-generator`.
-- No hay suite de pruebas automatizada; la verificación es manual con `--print` y `--no-set`.
+- La detección depende de XWayland/X11 o `wlr-randr`; en sesiones Wayland sin XWayland puede caerse al valor de reserva 1920x1080.
+- El diseño escala fuentes y alturas para que todo quepa, pero en pantallas muy bajas (por debajo de 640x480) no se genera la imagen: se considera una resolución inválida.
+- No hay integración continua; las pruebas se ejecutan manualmente con `python3 -m unittest discover -s tests -v`.
 
 ## Desarrollo
 
