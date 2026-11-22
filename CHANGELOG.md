@@ -4,6 +4,12 @@ Todos los cambios relevantes de este proyecto se documentan en este archivo.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto usa versiones `MAJOR.MINOR.PATCH` aún no publicadas como etiquetas.
 
+## [0.2.15] - 2026-11-22
+
+### Added
+
+- Instalador de PowerShell que descarga el proyecto desde GitHub y prepara Python y Pillow en Windows.
+
 ## [0.2.14] - 2026-11-22
 
 ### Fixed

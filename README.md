@@ -33,15 +33,15 @@ Los datos se muestran en un panel compacto y semitransparente en el cuarto infer
 
 ### Windows (PowerShell)
 
-Con Git y Python 3.10 o superior instalados, abre PowerShell en tu sesión de escritorio y ejecuta:
+Abre PowerShell en tu sesión de escritorio y ejecuta:
 
 ```powershell
-git clone --branch master https://github.com/gmolina75/aurora-desktop-picture.git
-cd aurora-desktop-picture
-.\instalar.bat
+$instalador = Join-Path $env:TEMP 'aurora-instalar-windows.ps1'
+Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/gmolina75/aurora-desktop-picture/master/instalar-windows.ps1' -OutFile $instalador
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File $instalador
 ```
 
-El instalador usa `py -3` si está disponible o `python` en su lugar. Instala Pillow y aplica el fondo. Si ambos comandos faltan, instala [Python para Windows](https://www.python.org/downloads/windows/) y abre una nueva consola. Si Windows devuelve «Acceso denegado» al aplicar el fondo, ejecuta `.\actualizar.bat` desde PowerShell como administrador.
+El instalador descarga el proyecto desde GitHub, reutiliza Python compatible si está disponible o lo instala desde python.org, instala Pillow y aplica el fondo. Los archivos quedan en `%LOCALAPPDATA%\AuroraDesktopPicture\proyecto`. Ejecuta el mismo bloque para actualizar la instalación. Para generar la imagen sin cambiar el fondo, añade `-NoAplicar` a la última línea.
 
 ### Ubuntu o Debian con GNOME
 
