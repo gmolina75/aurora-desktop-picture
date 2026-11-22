@@ -29,28 +29,29 @@ Los datos se muestran en un panel compacto y semitransparente en el cuarto infer
 - `xdpyinfo` (paquete `x11-utils`), `xrandr` o `wlr-randr` para detectar la resolución. Si ninguno devuelve un valor válido se usa la resolución segura de reserva 1920x1080.
 - `gsettings` para aplicar el fondo.
 
-## Windows
+## Instalación desde GitHub
 
-Para usar `actualizar.bat` con permisos elevados, haz clic derecho sobre el archivo y selecciona **Ejecutar como administrador**.
+### Windows (PowerShell)
 
-Ejecuta `python generate_wallpaper.py` desde tu sesión de escritorio para generar y aplicar el fondo directamente. Con `--no-set` puedes generar el PNG sin cambiar el escritorio.
+Con Git y Python 3.10 o superior instalados, abre PowerShell en tu sesión de escritorio y ejecuta:
 
-## Instalación
-
-```bash
-sudo apt install python3-pil x11-utils pciutils
-cd ~/aurora-desktop-picture
-chmod +x install.sh actualizar.sh desinstalar.sh
-./install.sh
+```powershell
+git clone --branch master https://github.com/gmolina75/aurora-desktop-picture.git
+cd aurora-desktop-picture
+py -3 -m pip install -r requirements.txt
+.\actualizar.bat
 ```
 
-Alternativamente, con entorno virtual y `pip`:
+Si `py` no está disponible, usa `python -m pip install -r requirements.txt`. Si Windows devuelve «Acceso denegado» al aplicar el fondo, vuelve a ejecutar `.\actualizar.bat` desde PowerShell abierto como administrador y ubicado en la carpeta del repositorio.
+
+### Ubuntu o Debian con GNOME
 
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
-./install.sh
+sudo apt update
+sudo apt install git python3 python3-pil fonts-dejavu-core libglib2.0-bin x11-utils pciutils
+git clone --branch master https://github.com/gmolina75/aurora-desktop-picture.git
+cd aurora-desktop-picture
+bash install.sh
 ```
 
 `install.sh` crea este archivo:

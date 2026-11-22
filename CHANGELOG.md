@@ -4,6 +4,12 @@ Todos los cambios relevantes de este proyecto se documentan en este archivo.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto usa versiones `MAJOR.MINOR.PATCH` aún no publicadas como etiquetas.
 
+## [0.2.13] - 2026-11-22
+
+### Changed
+
+- El README incluye los comandos para instalar desde GitHub en Windows y en Ubuntu o Debian con GNOME.
+
 ## [0.2.12] - 2026-11-22
 
 ### Changed
