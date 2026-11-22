@@ -4,6 +4,12 @@ Todos los cambios relevantes de este proyecto se documentan en este archivo.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto usa versiones `MAJOR.MINOR.PATCH` aún no publicadas como etiquetas.
 
+## [0.7.2] - 2026-11-22
+
+### Fixed
+
+- Linux reutiliza la captura de RAM cuando la consulta directa no devuelve detalles útiles. El tipo y la velocidad aparecen al inicio de la fila para evitar que el recorte los oculte.
+
 ## [0.7.1] - 2026-11-22
 
 ### Fixed

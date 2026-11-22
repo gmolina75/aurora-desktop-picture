@@ -27,7 +27,7 @@ from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageOps
 
-VERSION = "0.7.1"
+VERSION = "0.7.2"
 AVISO_DISCO = "Poco espacio | "
 RELEASE_DATE = "2026-11-22"
 
@@ -152,13 +152,17 @@ def red_linux() -> str:
 
 def detalles_ram_linux() -> str:
     """Devuelve tipo y velocidad por módulo instalado si SMBIOS está accesible."""
-    datos = run(["dmidecode", "--type", "17"])
-    if not datos:
-        cache = HOME / ".local/share/aurora-desktop-picture/ram.txt"
-        try:
-            datos = cache.read_text(encoding="utf-8")
-        except (OSError, UnicodeError):
-            return ""
+    detalles = interpretar_ram_smbios(run(["dmidecode", "--type", "17"]))
+    if detalles:
+        return detalles
+    cache = HOME / ".local/share/aurora-desktop-picture/ram.txt"
+    try:
+        return interpretar_ram_smbios(cache.read_text(encoding="utf-8-sig"))
+    except (OSError, UnicodeError):
+        return ""
+
+
+def interpretar_ram_smbios(datos: str) -> str:
     detalles = []
     for bloque in re.split(r"(?m)^Memory Device\s*$", datos)[1:]:
         campos = {}
@@ -381,7 +385,7 @@ def collect_hardware() -> list[tuple[str, str]]:
     if sys.platform.startswith("linux"):
         detalles_ram = detalles_ram_linux()
         if detalles_ram:
-            memoria = f"{memoria} | {detalles_ram}" if mem_total_gib else detalles_ram
+            memoria = f"{detalles_ram} | {memoria}" if mem_total_gib else detalles_ram
 
     uso = shutil.disk_usage("/")
     gb = 1024 ** 3  # mostramos GiB con la etiqueta "GB", igual que df -h
