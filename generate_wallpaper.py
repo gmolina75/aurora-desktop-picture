@@ -27,7 +27,7 @@ from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageOps
 
-VERSION = "0.4.2"
+VERSION = "0.4.3"
 RELEASE_DATE = "2026-11-22"
 
 HOME = Path.home()

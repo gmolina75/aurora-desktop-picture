@@ -201,7 +201,10 @@ Tras cualquier cambio, comprueba primero con `python3 -m unittest discover -s te
 
 - La detección depende de XWayland/X11 o `wlr-randr`; en sesiones Wayland sin XWayland puede caerse al valor de reserva 1920x1080.
 - El diseño escala fuentes y alturas para que todo quepa, pero en pantallas muy bajas (por debajo de 640x480) no se genera la imagen: se considera una resolución inválida.
-- No hay integración continua; las pruebas se ejecutan manualmente con `python3 -m unittest discover -s tests -v`.
+
+## Integración continua
+
+GitHub Actions ejecuta las pruebas en Windows y Ubuntu con Python 3.13 al subir cambios a `master` y al abrir o actualizar una solicitud de cambios hacia esa rama. También verifica los scripts y genera un PNG de prueba con `--no-set`. La comprobación del fondo en una sesión de escritorio, incluida una sesión RDP, se hace manualmente.
 
 ## Desarrollo
 
