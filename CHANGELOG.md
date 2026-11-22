@@ -4,10 +4,91 @@ Todos los cambios relevantes de este proyecto se documentan en este archivo.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto usa versiones `MAJOR.MINOR.PATCH` aún no publicadas como etiquetas.
 
-## [No publicado]
+## [0.2.12] - 2026-11-22
+
+### Changed
+
+- Se añaden 20 px de separación entre la tarjeta y el borde inferior del fondo.
+
+## [0.2.11] - 2026-11-22
+
+### Changed
+
+- Una franja adicional de 40 px separa la tarjeta del borde derecho de la imagen.
+
+## [0.2.10] - 2026-11-22
+
+### Changed
+
+- La tarjeta muestra la versión del script en letra pequeña junto a «Actualizado».
+
+## [0.2.9] - 2026-11-22
+
+### Changed
+
+- Se ensancha la tarjeta hacia la izquierda para dar más espacio al texto.
+
+## [0.2.8] - 2026-11-22
+
+### Changed
+
+- El margen interior derecho de la tarjeta aumenta al 8 % de su ancho, con un mínimo de 20 px.
+
+## [0.2.7] - 2026-11-22
+
+### Changed
+
+- Se amplía el margen interior derecho de la tarjeta.
+
+## [0.2.6] - 2026-11-22
+
+### Fixed
+
+- Windows detecta el fabricante y el modelo del equipo a partir de la información del BIOS.
+
+## [0.2.5] - 2026-11-22
 
 ### Added
 
+- `actualizar.bat` para aplicar el fondo desde el Explorador de Windows.
+
+## [0.2.4] - 2026-11-22
+
+### Added
+
+- Aplicación directa del fondo en Windows desde el script.
+
+### Changed
+
+- Tarjeta semitransparente con más margen interior y aproximadamente un 25 % menos de ancho y alto.
+
+## [0.2.3] - 2026-11-22
+
+### Changed
+
+- Los datos se muestran sin título ni pie de página, dentro del cuarto inferior derecho del fondo.
+
+## [0.2.2] - 2026-11-22
+
+### Fixed
+
+- Windows muestra la RAM física utilizable y la interfaz de red correspondiente a la IPv4 local.
+
+## [0.2.1] - 2026-11-22
+
+### Changed
+
+- En Windows, el PNG se guarda por defecto en la carpeta Documentos configurada para el usuario.
+
+### Fixed
+
+- La generación de imágenes en Windows utiliza fuentes del sistema.
+
+## [0.2.0] - 2026-11-22
+
+### Added
+
+- Opción `--version` para consultar la versión y su fecha sin generar una imagen ni aplicar el fondo.
 - `AGENTS.md` con instrucciones, convenciones y estado de los problemas históricos para agentes de IA.
 - `CHANGELOG.md` con el historial de cambios del proyecto.
 - `tests/test_wallpaper.py`: 7 pruebas `unittest` de resolución, layout y dibujo (`python3 -m unittest discover -s tests -v`).

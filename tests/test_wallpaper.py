@@ -42,18 +42,18 @@ class TestLayout(unittest.TestCase):
                 panel = layout["panel"]
                 body = layout["body_size"]
 
-                self.assertGreaterEqual(layout["top"], 0)
-                self.assertLessEqual(layout["bottom"], height)
-                self.assertLessEqual(layout["content_h"], height)
+                self.assertGreaterEqual(panel[0], width // 2)
+                self.assertGreaterEqual(panel[1], height // 2)
+                self.assertLess(panel[2], width)
+                self.assertLess(panel[3], height)
                 self.assertGreater(panel[2], panel[0])
                 self.assertGreater(panel[3], panel[1])
 
-                last_row = layout["rows_y"] + (ROWS - 1) * layout["row_h"] + body
-                self.assertLess(last_row, layout["footer_line_y"])
-                self.assertLess(layout["footer_text_y"] + layout["footer_size"],
-                                layout["bottom"])
-                self.assertLess(layout["subtitle_y"] + layout["subtitle_size"],
-                                layout["divider_y"])
+                fuente = gw.pick_font(gw.F_MONO, body)
+                alto_texto = fuente.getbbox("Ágj")[3]
+                self.assertLessEqual(alto_texto, layout["row_h"])
+                ultima_fila = layout["rows_y"] + (ROWS - 1) * layout["row_h"]
+                self.assertLess(ultima_fila + alto_texto, panel[3])
                 self.assertGreater(layout["label_w"], 0)
                 self.assertLess(layout["x"] + layout["label_w"], layout["right"])
 

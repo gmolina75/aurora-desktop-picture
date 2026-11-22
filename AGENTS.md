@@ -36,6 +36,12 @@ gsettings get org.gnome.desktop.background picture-uri
 
 La verificación manual **debe usar `--no-set`** para no cambiar el fondo del equipo de desarrollo. Para simular una resolución ajena, usa un `xdpyinfo` falso en `PATH` que imprima `dimensions: ANCHOxALTO`.
 
+## Versionado
+
+- Cada cambio del proyecto debe incrementar la versión en `generate_wallpaper.py` y actualizar su fecha, incluso si el cambio es pequeño.
+- Usa `PATCH` para correcciones, `MINOR` para funcionalidades compatibles y `MAJOR` para cambios incompatibles. Registra cada versión y su fecha en `CHANGELOG.md`.
+- Comprueba que `python3 generate_wallpaper.py --version` devuelve la versión y la fecha registradas.
+
 ## Convenciones
 
 - Idioma: español en código, comentarios, mensajes de log, documentación y commits.

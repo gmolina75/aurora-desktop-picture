@@ -4,15 +4,19 @@ Fondo de pantalla que muestra las **especificaciones reales del equipo**, leída
 
 Pensado para equipos Ubuntu/GNOME: genera una imagen PNG con la resolución de la pantalla y la aplica como fondo en los temas claro y oscuro.
 
+## Versión
+
+La tarjeta muestra la versión del script en letra pequeña junto a «Actualizado». Consulta la versión instalada y su fecha con `python3 generate_wallpaper.py --version`.
+
 ## Qué hace
 
 1. Recoge los datos del hardware (`/proc`, `/sys`, `lspci`, `lscpu`, `/etc/os-release`), incluidos el **nombre del equipo** (hostname) y su **dirección IP** local.
 2. Dibuja una imagen PNG con la resolución real de la pantalla, usando Pillow.
-3. La guarda en `~/Pictures/hardware_wallpaper.png`.
+3. Guarda `hardware_wallpaper.png` en la carpeta Documentos del usuario en Windows y en `~/Pictures` en Linux. Usa `--output` para elegir otra ruta.
 4. La aplica como fondo de GNOME (tema claro y oscuro, modo `zoom`).
 5. Escribe un registro en `~/.local/share/aurora-desktop-picture/last-run.log`.
 
-La imagen incluye una línea **«Actualizado: fecha y hora»** para que puedas comprobar que se refresca sola.
+Los datos se muestran en un panel compacto y semitransparente en el cuarto inferior derecho, sin título, para dejar libre el resto del escritorio. La imagen incluye una línea **«Actualizado: fecha y hora»** para que puedas comprobar que se refresca sola.
 
 > **Privacidad:** el fondo muestra el hostname y la IP local, y el registro guarda las rutas y errores. No compartas el PNG ni el log sin revisarlos antes.
 
@@ -24,6 +28,12 @@ La imagen incluye una línea **«Actualizado: fecha y hora»** para que puedas c
 - Herramientas opcionales que mejoran los datos mostrados: `lspci` (paquete `pciutils`) y `lscpu` (paquete `util-linux`). Si faltan, el script degrada aisladamente esas filas.
 - `xdpyinfo` (paquete `x11-utils`), `xrandr` o `wlr-randr` para detectar la resolución. Si ninguno devuelve un valor válido se usa la resolución segura de reserva 1920x1080.
 - `gsettings` para aplicar el fondo.
+
+## Windows
+
+Para usar `actualizar.bat` con permisos elevados, haz clic derecho sobre el archivo y selecciona **Ejecutar como administrador**.
+
+Ejecuta `python generate_wallpaper.py` desde tu sesión de escritorio para generar y aplicar el fondo directamente. Con `--no-set` puedes generar el PNG sin cambiar el escritorio.
 
 ## Instalación
 

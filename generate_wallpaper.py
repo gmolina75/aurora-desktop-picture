@@ -27,13 +27,34 @@ from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 
-HOME = Path.home()
-DEFAULT_OUTPUT = HOME / "Pictures" / "hardware_wallpaper.png"
+VERSION = "0.2.12"
+RELEASE_DATE = "2026-11-22"
 
-FONTS = Path("/usr/share/fonts/truetype/dejavu")
-F_MONO = FONTS / "DejaVuSansMono.ttf"
-F_MONO_B = FONTS / "DejaVuSansMono-Bold.ttf"
-F_SANS_B = FONTS / "DejaVuSans-Bold.ttf"
+HOME = Path.home()
+
+
+def default_output() -> Path:
+    if sys.platform == "win32":
+        import ctypes
+
+        # CSIDL_PERSONAL apunta a Documentos, incluso si está redirigida.
+        ruta = ctypes.create_unicode_buffer(260)
+        resultado = ctypes.windll.shell32.SHGetFolderPathW(None, 5, None, 0, ruta)
+        carpeta = Path(ruta.value) if resultado == 0 and ruta.value else HOME / "Documents"
+        return carpeta / "hardware_wallpaper.png"
+    return HOME / "Pictures" / "hardware_wallpaper.png"
+
+
+DEFAULT_OUTPUT = default_output()
+
+if sys.platform == "win32":
+    FONTS = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
+    F_MONO = FONTS / "consola.ttf"
+    F_MONO_B = FONTS / "consolab.ttf"
+else:
+    FONTS = Path("/usr/share/fonts/truetype/dejavu")
+    F_MONO = FONTS / "DejaVuSansMono.ttf"
+    F_MONO_B = FONTS / "DejaVuSansMono-Bold.ttf"
 
 MIN_WIDTH = 640
 MIN_HEIGHT = 480
@@ -110,6 +131,45 @@ def local_ips() -> str:
     return "  |  ".join(ips)
 
 
+def memoria_windows_gib() -> float:
+    import ctypes
+    from ctypes import wintypes
+
+    class EstadoMemoria(ctypes.Structure):
+        _fields_ = [("longitud", wintypes.DWORD), ("carga", wintypes.DWORD)] + [
+            (campo, ctypes.c_ulonglong)
+            for campo in ("total", "disponible", "pagina_total", "pagina_disponible",
+                          "virtual_total", "virtual_disponible", "virtual_extendida")
+        ]
+
+    estado = EstadoMemoria()
+    estado.longitud = ctypes.sizeof(estado)
+    if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(estado)):
+        return estado.total / 1024 ** 3
+    return 0.0
+
+
+def red_windows(direcciones: str) -> str:
+    """Identifica la interfaz que tiene una de las IPv4 mostradas."""
+    ips = set(direcciones.split("  |  ")) - {"127.0.0.1", ""}
+    for bloque in re.split(r"\n\s*\n(?=\S)", run(["ipconfig"])):
+        lineas = bloque.splitlines()
+        if not lineas:
+            continue
+        ipv4 = re.findall(r"^\s*[^\n:]*IPv4[^\n:]*:\s*([\d.]+)", bloque, re.M | re.I)
+        if ips.intersection(ipv4):
+            encabezado = lineas[0].rstrip(":")
+            tipo, _, nombre = encabezado.partition(" adapter ")
+            if not nombre:
+                nombre = re.sub(r"^Adaptador de (?:LAN inalámbrica|Ethernet)\s+",
+                                "", encabezado, flags=re.I)
+                tipo = encabezado
+            if re.search(r"wireless|inalámbrica", tipo, re.I) and not re.search(r"wi-?fi", nombre, re.I):
+                return f"{nombre} (Wi-Fi)"
+            return nombre
+    return "No detectada"
+
+
 def os_release() -> tuple[str, str]:
     data = {}
     try:
@@ -122,11 +182,34 @@ def os_release() -> tuple[str, str]:
     return data.get("PRETTY_NAME", platform.system()), data.get("VERSION_ID", "")
 
 
+def fabricante_modelo() -> tuple[str, str]:
+    if sys.platform != "win32":
+        return (first_line("/sys/class/dmi/id/sys_vendor"),
+                first_line("/sys/class/dmi/id/product_name"))
+
+    import winreg
+
+    try:
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"HARDWARE\DESCRIPTION\System\BIOS") as clave:
+            valores = []
+            for nombre in ("SystemManufacturer", "SystemProductName"):
+                try:
+                    valor, _ = winreg.QueryValueEx(clave, nombre)
+                except OSError:
+                    valor = ""
+                valores.append(valor.strip() if isinstance(valor, str) else "")
+    except OSError:
+        return "", ""
+    fabricante, modelo = valores
+    if fabricante.casefold() == "dell inc.":
+        fabricante = "Dell"
+    return fabricante, modelo
+
+
 def collect_hardware() -> list[tuple[str, str]]:
     """Devuelve la lista de filas (etiqueta, valor) para el fondo."""
 
-    vendor = first_line("/sys/class/dmi/id/sys_vendor")
-    product = first_line("/sys/class/dmi/id/product_name")
+    vendor, product = fabricante_modelo()
     if vendor and product.lower().startswith(vendor.lower()):
         equipo = product
     else:
@@ -184,6 +267,11 @@ def collect_hardware() -> list[tuple[str, str]]:
             if re.search(r"802\.11|wireless|wi-?fi", net, re.I):
                 net += " (Wi-Fi)"
 
+    direcciones = local_ips()
+    if sys.platform == "win32":
+        mem_total_gib = memoria_windows_gib()
+        net = red_windows(direcciones)
+
     uso = shutil.disk_usage("/")
     gb = 1024 ** 3  # mostramos GiB con la etiqueta "GB", igual que df -h
     disco = (
@@ -199,11 +287,11 @@ def collect_hardware() -> list[tuple[str, str]]:
         ("Nombre del equipo", socket.gethostname()),
         ("Procesador", f"{cpu} {base} {maximo}".strip()),
         ("", f"{nucleos} núcleos / {hilos} hilos  -  {sockets} socket(s)"),
-        ("Memoria RAM", f"{mem_total_gib:.1f} GiB"),
+        ("Memoria RAM", f"{mem_total_gib:.1f} GiB" if mem_total_gib else "No detectada"),
         ("Gráficos", gpu),
         ("Almacenamiento", disco),
         ("Red", net),
-        ("Dirección IP", local_ips()),
+        ("Dirección IP", direcciones),
         ("Sistema operativo", so),
         ("", f"Kernel {platform.release()}" + (f"  -  versión {version}" if version else "")),
         ("Actualizado", datetime.now().strftime("%d/%m/%Y a las %H:%M")),
@@ -284,58 +372,30 @@ def compute_layout(width: int, height: int, row_count: int) -> dict[str, int | t
     if row_count < 1:
         raise ValueError("no hay filas que dibujar")
 
-    margin = max(16, int(height * 0.03))
-    available = height - 2 * margin
-    header_h = max(70, min(300, int(available * 0.22)))
-    footer_h = max(40, min(160, int(available * 0.12)))
-    row_h = min(84, max(18, (available - header_h - footer_h) // row_count))
-    content_h = header_h + row_h * row_count + footer_h
-
-    if content_h > available:
-        excess = content_h - available
-        cut = min(excess, header_h - 70)
-        header_h -= cut
-        excess -= cut
-        cut = min(excess, footer_h - 40)
-        footer_h -= cut
-        content_h = header_h + row_h * row_count + footer_h
-
-    top = (height - content_h) // 2
-    bottom = top + content_h
-    pad = max(40, int(width * 0.035))
-    panel = (pad, top, width - pad, bottom)
-    x = panel[0] + max(40, int(width * 0.055))
-    right = panel[2] - max(30, int(width * 0.04))
-    label_w = min(500, int((right - x) * 0.24))
-
-    title_size = max(30, min(82, int(header_h * 0.34)))
-    title_offset = max(18, int(header_h * 0.12))
-    subtitle_size = max(14, min(34, int(header_h * 0.14)))
-    subtitle_offset = max(int(header_h * 0.52), title_offset + title_size + 6)
+    margin = max(8, min(width, height) // 50)
+    right_edge = width - margin
+    bottom = height - margin
+    panel_width = (right_edge - width // 2) * 5 // 6
+    right_edge -= 40
+    left = right_edge - panel_width
+    pad = max(10, margin * 3 // 4)
+    alto_maximo = (bottom - height // 2) * 3 // 4
+    row_h = min(31, (alto_maximo - 2 * pad) // row_count)
+    if row_h < 6:
+        raise ValueError("demasiadas filas para el panel")
+    bottom -= 20
+    top = bottom - row_h * row_count - 2 * pad
+    x = left + pad
+    right = right_edge - max(20, (right_edge - left) * 8 // 100)
 
     return {
-        "width": width,
-        "height": height,
-        "panel": panel,
+        "panel": (left, top, right_edge, bottom),
         "x": x,
         "right": right,
-        "label_w": label_w,
-        "header_h": header_h,
+        "label_w": (right - x) * 40 // 100,
         "row_h": row_h,
-        "footer_h": footer_h,
-        "content_h": content_h,
-        "top": top,
-        "bottom": bottom,
-        "title_size": title_size,
-        "subtitle_size": subtitle_size,
-        "body_size": max(12, min(40, int(row_h * 0.62))),
-        "footer_size": max(12, min(28, int(footer_h * 0.24))),
-        "title_y": panel[1] + title_offset,
-        "subtitle_y": panel[1] + subtitle_offset,
-        "divider_y": panel[1] + header_h - max(18, int(header_h * 0.10)),
-        "rows_y": panel[1] + header_h - max(6, int(header_h * 0.03)),
-        "footer_line_y": panel[3] - max(40, int(footer_h * 0.65)),
-        "footer_text_y": panel[3] - max(28, int(footer_h * 0.45)),
+        "body_size": min(30, row_h * 7 // 10),
+        "rows_y": top + pad,
     }
 
 
@@ -399,7 +459,7 @@ def draw_fit(
     """Reduce la fuente (y si hace falta recorta) para que el texto quepa."""
     path = F_MONO_B if bold else font_path
     max_width = max(1, int(max_width))
-    min_size = max(10, int(size * 0.55))
+    min_size = min(size, max(7, int(size * 0.65)))
     for candidate in range(size, min_size - 1, -1):
         font = pick_font(path, candidate)
         if draw.textlength(text, font=font) <= max_width:
@@ -422,40 +482,30 @@ def render(rows: list[tuple[str, str]], output: Path, wait_seconds: float = 0.0)
     d.ellipse([-int(width * 0.16), int(height * 0.28),
                int(width * 0.36), int(height * 1.19)], fill=(0, 220, 190, 16))
 
-    radius = max(16, min(42, int(min(width, height) * 0.025)))
-    d.rounded_rectangle(panel, radius=radius, fill=(8, 14, 28, 205),
-                        outline=(90, 160, 255, 120), width=3)
-    bar_x = panel[0] + max(24, int(width * 0.02))
-    bar_inset = max(16, int(height * 0.02))
-    d.rounded_rectangle([bar_x, panel[1] + bar_inset, bar_x + 8, panel[3] - bar_inset],
-                        radius=4, fill=(0, 210, 190, 220))
+    radius = min(18, layout["row_h"])
+    d.rounded_rectangle(panel, radius=radius, fill=(8, 14, 28, 110),
+                        outline=(90, 160, 255, 90), width=2)
 
     x = layout["x"]
     right = layout["right"]
-    draw_fit(d, (x, layout["title_y"]), "ESPECIFICACIONES DEL EQUIPO", F_SANS_B,
-             layout["title_size"], (235, 244, 255, 255), right - x)
-    draw_fit(d, (x, layout["subtitle_y"]),
-             "Información de hardware en vivo  //  Aurora Desktop Picture",
-             F_MONO, layout["subtitle_size"], (120, 200, 255, 255), right - x)
-    divider_y = layout["divider_y"]
-    d.line([(x, divider_y), (right, divider_y)], fill=(90, 160, 255, 110), width=2)
-
     label_w = layout["label_w"]
     y = layout["rows_y"]
     for label, value in rows:
         if label:
             draw_fit(d, (x, y), label.upper(), F_MONO_B, layout["body_size"],
-                     (0, 215, 195, 255), label_w - 16, bold=True)
+                     (0, 215, 195, 255), label_w - 6, bold=True)
+        value_right = right
+        if label == "Actualizado":
+            version_text = f"v{VERSION}"
+            version_font = pick_font(F_MONO, max(7, layout["body_size"] * 3 // 4))
+            version_width = version_font.getbbox(version_text)[2]
+            version_x = right - version_width
+            d.text((version_x, y + (layout["body_size"] - version_font.size) // 2),
+                   version_text, font=version_font, fill=(155, 173, 201, 255))
+            value_right = version_x - 8
         draw_fit(d, (x + label_w, y), value, F_MONO, layout["body_size"],
-                 (226, 235, 250, 255), right - (x + label_w))
+                 (226, 235, 250, 255), value_right - (x + label_w))
         y += layout["row_h"]
-
-    footer_line_y = layout["footer_line_y"]
-    d.line([(x, footer_line_y), (right, footer_line_y)],
-           fill=(90, 160, 255, 110), width=2)
-    draw_fit(d, (x, layout["footer_text_y"]),
-             "Generado automáticamente al iniciar sesión  -  GNOME / Ubuntu",
-             F_MONO, layout["footer_size"], (150, 175, 205, 255), right - x)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     img.save(output)
@@ -463,6 +513,20 @@ def render(rows: list[tuple[str, str]], output: Path, wait_seconds: float = 0.0)
 
 
 def set_background(path: Path) -> None:
+    if sys.platform == "win32":
+        import ctypes
+        from ctypes import wintypes
+
+        aplicar = ctypes.WinDLL("user32", use_last_error=True).SystemParametersInfoW
+        aplicar.argtypes = (wintypes.UINT, wintypes.UINT, wintypes.LPCWSTR, wintypes.UINT)
+        aplicar.restype = wintypes.BOOL
+        ruta = str(path.resolve())
+        if not aplicar(20, 0, ruta, 3):  # SPI_SETDESKWALLPAPER y notificación al escritorio.
+            codigo = ctypes.get_last_error()
+            raise OSError(f"Windows no pudo aplicar el fondo (código {codigo}): {ctypes.FormatError(codigo).strip()}")
+        log(f"Fondo aplicado: {ruta}")
+        return
+
     if not shutil.which("gsettings"):
         log("Aviso: gsettings no está disponible; no se aplicó el fondo")
         return
@@ -485,8 +549,11 @@ def set_background(path: Path) -> None:
 def main() -> int:
     global LOG_FILE
     ap = argparse.ArgumentParser(description="Fondo de pantalla con datos del hardware")
+    ap.add_argument("--version", action="version",
+                    version=f"Aurora Desktop Picture {VERSION} ({RELEASE_DATE})",
+                    help="mostrar la versión y la fecha de publicación")
     ap.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="ruta del PNG")
-    ap.add_argument("--no-set", action="store_true", help="no cambiar el fondo de GNOME")
+    ap.add_argument("--no-set", action="store_true", help="generar el PNG sin cambiar el fondo del escritorio")
     ap.add_argument("--log", type=Path, help="archivo de registro")
     ap.add_argument("--print", action="store_true", help="mostrar los datos y salir")
     ap.add_argument("--wait-display", type=float, default=0.0, metavar="SEGUNDOS",
