@@ -20,5 +20,11 @@ if errorlevel 1 (
 
 call actualizar.bat %*
 set "AURORA_RESULTADO=%ERRORLEVEL%"
+if not "%AURORA_RESULTADO%"=="0" goto terminar
+if not "%~1"=="" goto terminar
+for /f "delims=" %%P in ('%AURORA_PYTHON% -c "import sys; print(sys.executable)"') do set "AURORA_EJECUTABLE=%%P"
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File "%~dp0registrar-tarea-windows.ps1" -Python "%AURORA_EJECUTABLE%"
+set "AURORA_RESULTADO=%ERRORLEVEL%"
+:terminar
 popd
 exit /b %AURORA_RESULTADO%

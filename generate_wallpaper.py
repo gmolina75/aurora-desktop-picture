@@ -27,9 +27,9 @@ from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageOps
 
-VERSION = "0.7.2"
+VERSION = "0.8.0"
 AVISO_DISCO = "Poco espacio | "
-RELEASE_DATE = "2026-11-22"
+RELEASE_DATE = "2026-11-25"
 
 HOME = Path.home()
 
@@ -313,6 +313,25 @@ def fabricante_modelo() -> tuple[str, str]:
     return fabricante, modelo
 
 
+def descripcion_equipo() -> str:
+    descripcion = valor_configurado("AURORA_DESCRIPCION")
+    if descripcion:
+        return descripcion
+    if sys.platform == "win32":
+        import winreg
+
+        try:
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                                r"SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters") as clave:
+                valor, _ = winreg.QueryValueEx(clave, "srvcomment")
+                return valor.strip() if isinstance(valor, str) else ""
+        except OSError:
+            return ""
+    if sys.platform.startswith("linux"):
+        return run(["hostnamectl", "--pretty"])
+    return ""
+
+
 def collect_hardware() -> list[tuple[str, str]]:
     """Devuelve la lista de filas (etiqueta, valor) para el fondo."""
 
@@ -405,9 +424,11 @@ def collect_hardware() -> list[tuple[str, str]]:
     pretty, version = os_release()
     so = f"{pretty} ({platform.machine()})"
 
+    descripcion = descripcion_equipo()
     return [
         ("Equipo", equipo),
         ("Nombre del equipo", socket.gethostname()),
+        *([("Descripción", descripcion)] if descripcion else []),
         ("Procesador", f"{cpu} {base} {maximo}".strip()),
         ("", f"{nucleos} núcleos / {hilos} hilos  -  {sockets} socket(s)"),
         ("Memoria RAM", memoria),
@@ -595,25 +616,30 @@ def draw_fit(
     draw.text(xy, truncate_text(draw, text, font, max_width), font=font, fill=fill)
 
 
-def fondo_configurado() -> Path | None:
-    """Lee AURORA_FONDO del archivo .env ubicado junto al script."""
+def valor_configurado(nombre: str) -> str:
+    """Lee un valor del archivo .env ubicado junto al script."""
     archivo = Path(__file__).resolve().with_name(".env")
     try:
         lineas = archivo.read_text(encoding="utf-8-sig").splitlines()
     except FileNotFoundError:
-        return None
+        return ""
 
     for linea in lineas:
         clave, _, valor = linea.partition("=")
-        if clave.strip() != "AURORA_FONDO":
+        if clave.strip() != nombre:
             continue
         valor = valor.strip()
         if len(valor) >= 2 and valor[0] in ('"', "'") and valor[0] == valor[-1]:
             valor = valor[1:-1]
-        if valor:
-            ruta = Path(os.path.expandvars(valor)).expanduser()
-            return archivo.parent / ruta
-        return None
+        return valor
+    return ""
+
+
+def fondo_configurado() -> Path | None:
+    valor = valor_configurado("AURORA_FONDO")
+    if valor:
+        ruta = Path(os.path.expandvars(valor)).expanduser()
+        return Path(__file__).resolve().parent / ruta
     return None
 
 
@@ -721,25 +747,32 @@ def main() -> int:
     ap.add_argument("--fondo", type=Path, help="imagen sobre la que se dibuja la tarjeta")
     ap.add_argument("--no-set", action="store_true", help="generar el PNG sin cambiar el fondo del escritorio")
     ap.add_argument("--log", type=Path, help="archivo de registro")
+    ap.add_argument("--cada-hora", action="store_true", help="regenerar al iniciar y cada hora")
     ap.add_argument("--print", action="store_true", help="mostrar los datos y salir")
     ap.add_argument("--wait-display", type=float, default=0.0, metavar="SEGUNDOS",
                     help="esperar hasta que haya una resolución válida (arranque automático)")
     args = ap.parse_args()
 
     LOG_FILE = args.log
-    try:
-        rows = collect_hardware()
-        if args.print:
-            for label, value in rows:
-                print(f"{label or '  '}: {value}")
+    espera = args.wait_display
+    while True:
+        try:
+            rows = collect_hardware()
+            if args.print:
+                for label, value in rows:
+                    print(f"{label or '  '}: {value}")
+                return 0
+            render(rows, args.output, espera, fondo=args.fondo if args.fondo is not None else fondo_configurado())
+            if not args.no_set:
+                set_background(args.output)
+        except Exception as exc:  # noqa: BLE001 - queremos registrar cualquier fallo
+            log(f"ERROR: {type(exc).__name__}: {exc}")
+            if not args.cada_hora:
+                return 1
+        if not args.cada_hora:
             return 0
-        render(rows, args.output, args.wait_display, fondo=args.fondo if args.fondo is not None else fondo_configurado())
-        if not args.no_set:
-            set_background(args.output)
-        return 0
-    except Exception as exc:  # noqa: BLE001 - queremos registrar cualquier fallo
-        log(f"ERROR: {type(exc).__name__}: {exc}")
-        return 1
+        espera = 0
+        time.sleep(3600)
 
 
 if __name__ == "__main__":

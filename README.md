@@ -4,6 +4,10 @@ Fondo de pantalla que muestra las **especificaciones reales del equipo**, leída
 
 Genera una imagen PNG con los datos del equipo y la aplica como fondo en Windows, GNOME o Cinnamon.
 
+Aurora nació para **distinguir de un vistazo los escritorios remotos** cuando alternas entre muchos equipos. La ficha integra en el fondo el nombre del equipo, el sistema operativo, el procesador, la RAM, el almacenamiento y la red disponibles.
+
+[Ver la landing del proyecto](landing-page/index.html). Para verla renderizada desde una copia local, abre ese archivo en tu navegador.
+
 ## Versión
 
 La tarjeta muestra la versión del script en letra pequeña junto a «Actualizado». Consulta la versión instalada y su fecha con `python3 generate_wallpaper.py --version`.
@@ -33,6 +37,43 @@ bash actualizar.sh
 En Ubuntu o Mint, si falta el comando, instálalo con `sudo apt install dmidecode`. Repite la captura si cambias la RAM. El archivo guarda los campos de capacidad, tipo y velocidad. Las actualizaciones del fondo se ejecutan con tu usuario habitual.
 
 En Linux, **Almacenamiento** indica HDD, SSD, SSD SATA o SSD NVMe cuando el sistema permite identificar el dispositivo que respalda la raíz `/`. Si no se identifica, se conservan las cifras de espacio.
+
+## Descripción del equipo
+
+La tarjeta muestra la descripción del equipo configurada en Windows o el nombre descriptivo de Linux, cuando está disponible. Para usar tu propio texto, agrega esta línea al archivo `.env` junto al script:
+
+```dotenv
+AURORA_DESCRIPCION="Servidor de pruebas de Guayaquil"
+```
+
+## Refresco automático
+
+### Windows
+
+En una copia clonada, activa el refresco desde la sesión del usuario cuyo fondo quieres actualizar:
+
+```powershell
+.\instalar.bat
+```
+
+El instalador de PowerShell también registra la tarea cuando se ejecuta sin opciones de vista previa ni de salida personalizada. La tarea se ejecuta al iniciar sesión y cada hora mientras el usuario tenga una sesión abierta. Puedes consultar su estado y el resultado de la última ejecución con:
+
+```powershell
+$nombre = 'Aurora Desktop Picture - ' + [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+Get-ScheduledTask -TaskName $nombre
+Get-ScheduledTaskInfo -TaskName $nombre
+```
+
+El registro del refresco se guarda en `%LOCALAPPDATA%\AuroraDesktopPicture\last-run.log`.
+
+### Linux con GNOME o Cinnamon
+
+En una instalación existente, vuelve a ejecutar `bash install.sh` y cierra y vuelve a abrir la sesión gráfica. Aurora regenerará el fondo al entrar y cada hora mientras la sesión esté abierta. Puedes comprobar la configuración y consultar el registro con:
+
+```bash
+grep -- '--cada-hora' "$HOME/.config/autostart/aurora-desktop-picture.desktop"
+tail -n 20 "$HOME/.local/share/aurora-desktop-picture/last-run.log"
+```
 
 ## Requisitos
 
@@ -73,7 +114,7 @@ bash install.sh
 ~/.config/autostart/aurora-desktop-picture.desktop
 ```
 
-Gracias a él, el escritorio ejecuta el script **automáticamente al iniciar sesión**. Para que el cambio surta efecto, cierra sesión y vuelve a entrar una vez.
+Gracias a él, el escritorio ejecuta el script **automáticamente al iniciar sesión y cada hora**. Para que el cambio surta efecto, cierra sesión y vuelve a entrar una vez.
 
 ## Actualizar desde GitHub
 

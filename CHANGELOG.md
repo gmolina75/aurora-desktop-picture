@@ -4,6 +4,19 @@ Todos los cambios relevantes de este proyecto se documentan en este archivo.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto usa versiones `MAJOR.MINOR.PATCH` aún no publicadas como etiquetas.
 
+## [0.8.0] - 2026-11-25
+
+### Added
+
+- Descripción del equipo en la tarjeta, con un valor personalizable en `.env`.
+- Refresco automático al iniciar sesión y cada hora en Windows y Linux.
+
+## [0.7.3] - 2026-11-23
+
+### Added
+
+- Landing del proyecto y explicación en el README sobre el uso en múltiples escritorios remotos.
+
 ## [0.7.2] - 2026-11-22
 
 ### Fixed

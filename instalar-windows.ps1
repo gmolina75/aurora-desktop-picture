@@ -65,6 +65,9 @@ try {
     if ($Salida) { $opciones += @('--output', $Salida) }
     & $python (Join-Path $proyecto 'generate_wallpaper.py') @opciones
     if ($LASTEXITCODE -ne 0) { throw 'Aurora Desktop Picture no pudo completar la operacion.' }
+    if (!$NoAplicar -and !$Salida) {
+        & (Join-Path $proyecto 'registrar-tarea-windows.ps1') -Python $python
+    }
     Write-Host "Aurora Desktop Picture instalado en $proyecto"
 } finally {
     $rutaTemporal = (Resolve-Path -LiteralPath $temporal).Path
